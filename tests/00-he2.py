@@ -33,6 +33,7 @@ gdf._cderi_to_save = cderi
 gdf.build()
 
 kmf = scf.KRHF(c, kpts, exxdiv=exxdiv).density_fit()
+#kmf = scf.KRHF(c, kpts, exxdiv=exxdiv)
 kmf.with_df = gdf
 kmf.with_df._cderi = cderi
 kmf.conv_tol = 1e-12
@@ -87,7 +88,6 @@ def get_h2_emb(C_lo_eo, **kwargs):
     coeff_ao_lo_r = lat.k2R(coeff_ao_lo_k)
     
     print("coeff_lo_eo_r.shape = ", coeff_lo_eo_r.shape)
-    
     print("coeff_ao_lo_k.shape = ", coeff_ao_lo_k.shape)
     print("coeff_ao_lo_r.shape = ", coeff_ao_lo_r.shape)
 
@@ -96,7 +96,7 @@ def get_h2_emb(C_lo_eo, **kwargs):
     
     print("coeff_ao_lo_full.shape = ", coeff_ao_lo_full.shape)
     print("coeff_ao_eo.shape = ", coeff_ao_eo.shape)
-    
+    print("coeff_ao_eo.dtype = ", coeff_ao_eo.dtype)
 
     assert coeff_ao_lo_r.shape == (ncell, nao, nlo)
     assert coeff_ao_lo_full.shape == (ncell * nao, nlo * ncell)
@@ -104,13 +104,15 @@ def get_h2_emb(C_lo_eo, **kwargs):
 
     print("C_lo_eo.shape = ", C_lo_eo.shape)
     print("C_lo_eo = ", )
-    print(C_lo_eo)
+    # print(C_lo_eo)
 
     from libdmet.dmet import gdmet, rdmet, udmet
     if isinstance(dmet_obj, rdmet.RDMET) or isinstance(dmet_obj, udmet.UDMET): # RHF and UHF
         from libdmet.dmet.rdmet_helper import get_h2_emb
         h2_emb = get_h2_emb(dmet_obj, C_lo_eo, **kwargs)
         # in fact the working function is trans_h2_loc
+        print("h2_emd.shape = ", h2_emb.shape)
+        print("h2_emd.dtype = ", h2_emb.dtype)
 
     else: # not sure about the shape, you can try
         from libdmet.dmet.gdmet_helper import get_h2_emb
@@ -120,7 +122,8 @@ def get_h2_emb(C_lo_eo, **kwargs):
     spin2 = spin * (spin + 1) // 2
     h2_emb = h2_emb.reshape(spin2, neo2, neo2)
 
-    # assert 1 == 2
+    assert 1 == 2
+    
     return h2_emb
 
 dmet_obj.get_h2_emb = get_h2_emb

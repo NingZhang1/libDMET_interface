@@ -11,20 +11,12 @@ from pyscf.isdf              import isdf_tools_cell
 
 import libdmet
 from libdmet.system import lattice
-from libdmet.dmet import rdmet, udmet
+from libdmet.dmet import rdmet
 from libdmet.lo import make_lo
 
 beta  = 1000.0 # numpy.inf
 #kmesh = [2, 2, 2]
 kmesh = [1, 2, 2]
-
-#c = pyscf.pbc.gto.Cell()
-#c.atom  = 'He 2.0000 2.0000 2.0000; He 2.0000 2.0000 6.0000'
-#c.basis = '321g'
-#c.a = numpy.diag([4.0000, 4.0000, 8.0000])
-#c.unit = 'bohr'
-#c.verbose = 0
-#c.build()
 
 boxlen = 3.57371000
 prim_a = numpy.array([[boxlen,0.0,0.0],[0.0,boxlen,0.0],[0.0,0.0,boxlen]])
@@ -47,19 +39,37 @@ kpts = lat.kpts
 nkpts = len(kpts)
 exxdiv = None
 
-cderi = 'gdf_ints.h5'
-gdf = df.GDF(c, kpts)
-gdf.verbose = 0
-gdf._cderi_to_save = cderi
-gdf.build()
+# cderi = 'gdf_ints.h5'
+# gdf = df.GDF(c, kpts)
+# gdf.verbose = 0
+# gdf._cderi_to_save = cderi
+# gdf.build()
+# kmf = scf.KRHF(c, kpts, exxdiv=exxdiv).density_fit()
+# kmf.with_df = gdf
+# kmf.with_df._cderi = cderi
+# kmf.conv_tol = 1e-12
+# kmf.verbose = 4
+# kmf.kernel()
 
-kmf = scf.KRHF(c, kpts, exxdiv=exxdiv).density_fit()
-# kmf = scf.KUHF(c, kpts, exxdiv=exxdiv).density_fit()
-kmf.with_df = gdf
-kmf.with_df._cderi = cderi
-kmf.conv_tol = 1e-12
-kmf.verbose = 4
-kmf.kernel()
+prim_partition = [[0,1],[2,3],[4,5],[6,7]]
+pbc_isdf_info = PBC_ISDF_Info_Quad_K(c,
+                                    kmesh=kmesh,  
+                                    with_robust_fitting=True, 
+                                    rela_cutoff_QRCP=2e-4, 
+                                    direct=False
+                                    )
+pbc_isdf_info.verbose = 10
+pbc_isdf_info.build_IP_local(c=70, m=5, group=prim_partition)
+pbc_isdf_info.build_auxiliary_Coulomb()
+print("effective c = ", float(pbc_isdf_info.naux) / pbc_isdf_info.nao) 
+
+kmf2 = scf.KRHF(c, kpts, exxdiv=exxdiv)
+kmf2.with_df = pbc_isdf_info
+kmf2.conv_tol = 1e-12
+kmf2.verbose = 4
+kmf2.kernel()
+
+kmf = kmf2
 
 # exit(1)
 
@@ -82,10 +92,6 @@ dmet_obj = rdmet.RDMET(
     lat, kmf, solver, coeff_ao_lo, 
     vcor=None, solver_argss=solver_argss,
 )
-# dmet_obj = udmet.UDMET(
-#     lat, kmf, solver, coeff_ao_lo, 
-#     vcor=None, solver_argss=solver_argss,
-# )
 dmet_obj.dump_flags()
 dmet_obj.beta = beta
 dmet_obj.fit_method = 'CG'
@@ -141,18 +147,11 @@ def get_h2_emb(C_lo_eo, **kwargs):
     neo2 = neo * (neo + 1) // 2
     spin2 = spin * (spin + 1) // 2
     h2_emb = h2_emb.reshape(spin2, neo2, neo2)
-
+    
     print(h2_emb[0][0][:100])
     print(h2_emb[0][0][300:310])
     print(h2_emb[0][0][525:537])
-    
-    # print(h2_emb[1][0][:100])
-    # print(h2_emb[1][0][300:310])
-    # print(h2_emb[1][0][525:537])
-    # print(h2_emb[2][0][:100])
-    # print(h2_emb[2][0][300:310])
-    # print(h2_emb[2][0][525:537])
-    
+
     assert 1 == 2
     
     return h2_emb
